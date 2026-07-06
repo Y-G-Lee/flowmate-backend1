@@ -29,6 +29,69 @@ public class GlobalExceptionHandler {
 				.body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), ex.getMessage()));
 	}
 
+	@ExceptionHandler(UnauthorizedException.class)
+	public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
+		return ResponseEntity
+				.status(HttpStatus.UNAUTHORIZED)
+				.body(ErrorResponse.of(HttpStatus.UNAUTHORIZED.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(ProjectNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleProjectNotFound(ProjectNotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(TeamNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleTeamNotFound(TeamNotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(TaskNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleTaskNotFound(TaskNotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(DuplicateProjectMemberException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateProjectMember(DuplicateProjectMemberException ex) {
+		return ResponseEntity
+				.status(HttpStatus.CONFLICT)
+				.body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(ProjectMemberNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleProjectMemberNotFound(ProjectMemberNotFoundException ex) {
+		return ResponseEntity
+				.status(HttpStatus.NOT_FOUND)
+				.body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(ForbiddenAccessException.class)
+	public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenAccessException ex) {
+		return ResponseEntity
+				.status(HttpStatus.FORBIDDEN)
+				.body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), ex.getMessage()));
+	}
+
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
+		return ResponseEntity
+				.status(HttpStatus.BAD_REQUEST)
+				.body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
 		List<ErrorResponse.FieldError> errors = ex.getBindingResult()

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.flowmate.backend.project.mapper.TeamMapper">
+
+    <select id="findTeamsByUserId" resultType="com.flowmate.backend.project.dto.TeamResponse">
+        SELECT
+            te.id,
+            te.name,
+            te.description,
+            (
+                SELECT COUNT(*)::INTEGER
+                FROM team_members tm2
+                WHERE tm2.team_id = te.id
+            ) AS memberCount,
+            (
+                SELECT COUNT(*)::INTEGER
+                FROM projects p
+                WHERE p.team_id = te.id
+            ) AS projectCount
+        FROM teams te
+        INNER JOIN team_members tm ON tm.team_id = te.id
+        WHERE tm.user_id = #{userId}
+        ORDER BY te.name ASC
+    </select>
+
+    <select id="findTeamByIdAndUserId" resultType="com.flowmate.backend.project.dto.TeamResponse">
+        SELECT
+            te.id,
+            te.name,
+            te.description,
+            (
+                SELECT COUNT(*)::INTEGER
+                FROM team_members tm2
+                WHERE tm2.team_id = te.id
+            ) AS memberCount,
+            (
+                SELECT COUNT(*)::INTEGER
+                FROM projects p
+                WHERE p.team_id = te.id
+            ) AS projectCount
+        FROM teams te
+        INNER JOIN team_members tm ON tm.team_id = te.id
+        WHERE te.id = #{teamId}
+          AND tm.user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="findMembersByTeamId" resultType="com.flowmate.backend.project.dto.TeamMemberResponse">
+        SELECT
+            tm.user_id AS userId,
+            u.name,
+            u.email,
+            tm.team_role AS teamRole,
+            tm.joined_at AS joinedAt
+        FROM team_members tm
+        INNER JOIN users u ON u.id = tm.user_id
+        WHERE tm.team_id = #{teamId}
+        ORDER BY tm.joined_at ASC
+    </select>
+
+    <select id="findProjectsByTeamId" resultType="com.flowmate.backend.project.dto.TeamProjectSummaryResponse">
+        SELECT
+            p.id,
+            p.name,
+            p.status,
+            COALESCE(
+                ROUND(
+                    COUNT(CASE
+                        WHEN UPPER(REPLACE(COALESCE(t.status, ''), '-', '_')) = 'DONE' THEN 1
+                    END) * 100.0 / NULLIF(COUNT(t.id), 0)
+                ),
+                0
+            )::INTEGER AS progress
+        FROM projects p
+        LEFT JOIN tasks t ON t.project_id = p.id
+        WHERE p.team_id = #{teamId}
+        GROUP BY p.id, p.name, p.status, p.created_at
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="findActiveProjectsByTeamId" resultType="com.flowmate.backend.project.dto.TeamProjectSummaryResponse">
+        SELECT
+            p.id,
+            p.name,
+            p.status,
+            COALESCE(
+                ROUND(
+                    COUNT(CASE
+                        WHEN UPPER(REPLACE(COALESCE(t.status, ''), '-', '_')) = 'DONE' THEN 1
+                    END) * 100.0 / NULLIF(COUNT(t.id), 0)
+                ),
+                0
+            )::INTEGER AS progress
+        FROM projects p
+        LEFT JOIN tasks t ON t.project_id = p.id
+        WHERE p.team_id = #{teamId}
+          AND UPPER(REPLACE(COALESCE(p.status, ''), '-', '_')) IN ('IN_PROGRESS', 'PLANNING')
+        GROUP BY p.id, p.name, p.status, p.created_at
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="findTeamRoleByTeamIdAndUserId" resultType="string">
+        SELECT tm.team_role
+        FROM team_members tm
+        WHERE tm.team_id = #{teamId}
+          AND tm.user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="findProjectIdsByTeamId" resultType="int">
+        SELECT p.id
+        FROM projects p
+        WHERE p.team_id = #{teamId}
+        ORDER BY p.id ASC
+    </select>
+
+    <delete id="deleteTeamMembersByTeamId">
+        DELETE FROM team_members
+        WHERE team_id = #{teamId}
+    </delete>
+
+    <delete id="deleteTeam">
+        DELETE FROM teams
+        WHERE id = #{teamId}
+    </delete>
+
+</mapper>

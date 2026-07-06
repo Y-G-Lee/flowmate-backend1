@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.flowmate.backend.task.mapper.TaskMapper">
+
+    <!--
+        작업 조회는 항상 project_id 조건을 사용합니다.
+        접근 제어: team_members EXISTS로 사용자가 속한 팀의 프로젝트만 허용
+    -->
+
+    <sql id="taskSelectColumns">
+        t.id,
+        t.project_id AS projectId,
+        p.name AS projectName,
+        t.title,
+        t.description,
+        t.status,
+        t.priority,
+        t.assignee_id AS assigneeId,
+        COALESCE(u.name, '미지정') AS assigneeName,
+        t.due_date AS dueDate,
+        t.created_at AS createdAt
+    </sql>
+
+    <sql id="taskFromJoin">
+        FROM tasks t
+        INNER JOIN projects p ON p.id = t.project_id
+        INNER JOIN teams te ON te.id = p.team_id
+        LEFT JOIN users u ON u.id = t.assignee_id
+    </sql>
+
+    <sql id="accessibleProjectFilter">
+        EXISTS (
+            SELECT 1
+            FROM team_members tm
+            WHERE tm.team_id = p.team_id
+              AND tm.user_id = #{userId}
+        )
+    </sql>
+
+    <select id="findTasksByProjectId" resultType="com.flowmate.backend.task.dto.TaskResponse">
+        SELECT
+        <include refid="taskSelectColumns"/>
+        <include refid="taskFromJoin"/>
+        WHERE t.project_id = #{projectId}
+          AND <include refid="accessibleProjectFilter"/>
+        ORDER BY t.created_at DESC
+    </select>
+
+    <select id="findTaskByIdAndProjectId" resultType="com.flowmate.backend.task.dto.TaskResponse">
+        SELECT
+        <include refid="taskSelectColumns"/>
+        <include refid="taskFromJoin"/>
+        WHERE t.project_id = #{projectId}
+          AND t.id = #{taskId}
+          AND <include refid="accessibleProjectFilter"/>
+        LIMIT 1
+    </select>
+
+    <insert id="insertTask" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO tasks (
+            project_id,
+            title,
+            description,
+            status,
+            priority,
+            assignee_id,
+            created_by,
+            due_date,
+            created_at
+        )
+        VALUES (
+            #{projectId},
+            #{title},
+            #{description},
+            #{status},
+            #{priority},
+            #{assigneeId},
+            #{createdBy},
+            #{dueDate},
+            NOW()
+        )
+    </insert>
+
+    <update id="updateTask">
+        UPDATE tasks
+        SET
+            title = #{title},
+            description = #{description},
+            status = #{status},
+            priority = #{priority},
+            assignee_id = #{assigneeId},
+            due_date = #{dueDate}
+        WHERE id = #{id}
+          AND project_id = #{projectId}
+    </update>
+
+    <delete id="deleteTask">
+        DELETE FROM tasks
+        WHERE id = #{taskId}
+          AND project_id = #{projectId}
+    </delete>
+
+</mapper>

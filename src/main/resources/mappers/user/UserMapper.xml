@@ -18,6 +18,24 @@
         WHERE email = #{email}
     </select>
 
+    <select id="findById" resultMap="userResultMap">
+        SELECT id, name, email, password, created_at
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <select id="searchByKeyword" resultType="com.flowmate.backend.user.dto.UserSearchResponse">
+        SELECT
+            id,
+            name,
+            email
+        FROM users
+        WHERE name ILIKE CONCAT('%', #{keyword}, '%')
+           OR email ILIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY name ASC
+        LIMIT 10
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
         INSERT INTO users (name, email, password)
         VALUES (#{name}, #{email}, #{password})
