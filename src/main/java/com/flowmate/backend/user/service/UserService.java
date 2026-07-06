@@ -9,6 +9,7 @@ import com.flowmate.backend.user.domain.User;
 import com.flowmate.backend.user.dto.EmailCheckResponse;
 import com.flowmate.backend.user.dto.SignUpRequest;
 import com.flowmate.backend.user.dto.SignUpResponse;
+import com.flowmate.backend.user.dto.UserSearchResponse;
 import com.flowmate.backend.user.mapper.UserMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,14 @@ public class UserService {
 
 	private final UserMapper userMapper;
 	private final PasswordEncoder passwordEncoder;
+
+	public java.util.List<UserSearchResponse> searchUsers(String keyword) {
+		if (keyword == null || keyword.isBlank()) {
+			return java.util.List.of();
+		}
+
+		return userMapper.searchByKeyword(keyword.trim());
+	}
 
 	public EmailCheckResponse checkEmailAvailability(String email) {
 		boolean available = userMapper.findByEmail(email).isEmpty();

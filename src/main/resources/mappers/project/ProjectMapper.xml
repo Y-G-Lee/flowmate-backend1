@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.flowmate.backend.project.mapper.ProjectMapper">
+
+    <sql id="projectSelectColumns">
+        p.id,
+        p.name,
+        p.description,
+        p.status,
+        p.team_id AS teamId,
+        te.name AS teamName,
+        COALESCE(
+            ROUND(
+                COUNT(CASE
+                    WHEN UPPER(REPLACE(COALESCE(t.status, ''), '-', '_')) = 'DONE' THEN 1
+                END) * 100.0 / NULLIF(COUNT(t.id), 0)
+            ),
+            0
+        )::INTEGER AS progress,
+        COUNT(t.id)::INTEGER AS taskCount,
+        COUNT(CASE
+            WHEN UPPER(REPLACE(COALESCE(t.status, ''), '-', '_')) = 'DONE' THEN 1
+        END)::INTEGER AS completedTaskCount,
+        (
+            SELECT COUNT(*)::INTEGER
+            FROM team_members tm2
+            WHERE tm2.team_id = p.team_id
+        ) AS memberCount,
+        p.deadline AS deadline,
+        p.created_at AS createdAt
+    </sql>
+
+    <sql id="accessibleProjectJoin">
+        FROM projects p
+        INNER JOIN teams te ON te.id = p.team_id
+        LEFT JOIN tasks t ON t.project_id = p.id
+        WHERE EXISTS (
+            SELECT 1
+            FROM team_members tm
+            WHERE tm.team_id = p.team_id
+              AND tm.user_id = #{userId}
+        )
+    </sql>
+
+    <select id="findTeamIdByUserAndTeamName" resultType="int">
+        SELECT MIN(te.id)
+        FROM teams te
+        INNER JOIN team_members tm ON tm.team_id = te.id
+        WHERE tm.user_id = #{userId}
+          AND te.name = #{teamName}
+    </select>
+
+    <select id="existsTeamMember" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM team_members
+            WHERE team_id = #{teamId}
+              AND user_id = #{userId}
+        )
+    </select>
+
+    <insert id="insertTeam" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO teams (name, description, created_by, created_at)
+        VALUES (#{name}, #{description}, #{createdBy}, NOW())
+    </insert>
+
+    <insert id="insertTeamMember">
+        INSERT INTO team_members (team_id, user_id, team_role, joined_at)
+        VALUES (#{teamId}, #{userId}, #{teamRole}, NOW())
+    </insert>
+
+    <insert id="insertProject" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO projects (team_id, name, description, status, deadline, created_by, created_at)
+        VALUES (#{teamId}, #{name}, #{description}, #{status}, #{deadline}, #{createdBy}, NOW())
+    </insert>
+
+    <update id="updateProject">
+        UPDATE projects
+        SET
+            name = #{name},
+            description = #{description},
+            status = #{status},
+            deadline = #{deadline}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteTasksByProjectId">
+        DELETE FROM tasks
+        WHERE project_id = #{projectId}
+    </delete>
+
+    <delete id="deleteProject">
+        DELETE FROM projects
+        WHERE id = #{projectId}
+    </delete>
+
+    <select id="findProjectsByUserId" resultType="com.flowmate.backend.project.dto.ProjectResponse">
+        SELECT
+        <include refid="projectSelectColumns"/>
+        <include refid="accessibleProjectJoin"/>
+        GROUP BY p.id, p.name, p.description, p.status, p.team_id, te.name, p.deadline, p.created_at
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="findProjectByIdAndUserId" resultType="com.flowmate.backend.project.dto.ProjectResponse">
+        SELECT
+        <include refid="projectSelectColumns"/>
+        <include refid="accessibleProjectJoin"/>
+          AND p.id = #{projectId}
+        GROUP BY p.id, p.name, p.description, p.status, p.team_id, te.name, p.deadline, p.created_at
+        LIMIT 1
+    </select>
+
+</mapper>

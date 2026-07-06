@@ -12,7 +12,7 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
     jdbc-type-for-null: NULL
-  type-aliases-package: com.flowmate.backend.user.domain
+  type-aliases-package: com.flowmate.backend.user.domain,com.flowmate.backend.project.domain,com.flowmate.backend.task.domain
 
 jwt:
   secret: 6364b0d2de554d3e942b1b8b048345251ce116d2a7264276973bb342f0e55def
