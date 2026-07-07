@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.flowmate.backend.project.dto.TeamCreateRequest;
 import com.flowmate.backend.project.dto.TeamDetailResponse;
+import com.flowmate.backend.project.dto.TeamMemberAddRequest;
+import com.flowmate.backend.project.dto.TeamMemberResponse;
 import com.flowmate.backend.project.dto.TeamResponse;
 import com.flowmate.backend.project.service.TeamService;
 
@@ -46,5 +48,13 @@ public class TeamController {
 	public ResponseEntity<Void> deleteTeam(@PathVariable Integer teamId) {
 		teamService.deleteTeam(teamId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/{teamId}/members")
+	public ResponseEntity<TeamMemberResponse> addTeamMember(
+			@PathVariable Integer teamId,
+			@Valid @RequestBody TeamMemberAddRequest request
+	) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(teamService.addTeamMember(teamId, request));
 	}
 }
