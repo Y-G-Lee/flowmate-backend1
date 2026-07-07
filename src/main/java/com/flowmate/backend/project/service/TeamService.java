@@ -9,15 +9,18 @@ import com.flowmate.backend.common.auth.AuthUserResolver;
 import com.flowmate.backend.common.exception.BadRequestException;
 import com.flowmate.backend.common.exception.ForbiddenAccessException;
 import com.flowmate.backend.common.exception.TeamNotFoundException;
+import com.flowmate.backend.common.exception.UserNotFoundException;
 import com.flowmate.backend.project.domain.Team;
 import com.flowmate.backend.project.dto.TeamCreateRequest;
 import com.flowmate.backend.project.dto.TeamDetailResponse;
+import com.flowmate.backend.project.dto.TeamMemberAddRequest;
 import com.flowmate.backend.project.dto.TeamMemberResponse;
 import com.flowmate.backend.project.dto.TeamProjectSummaryResponse;
 import com.flowmate.backend.project.dto.TeamResponse;
 import com.flowmate.backend.project.mapper.ProjectMapper;
 import com.flowmate.backend.project.mapper.TeamMapper;
 import com.flowmate.backend.project.member.service.ProjectMemberService;
+import com.flowmate.backend.user.mapper.UserMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,10 +29,12 @@ import lombok.RequiredArgsConstructor;
 public class TeamService {
 
 	private static final String CREATOR_TEAM_ROLE = "OWNER";
+	private static final String DEFAULT_TEAM_ROLE = "MEMBER";
 
 	private final TeamMapper teamMapper;
 	private final ProjectMapper projectMapper;
 	private final ProjectMemberService projectMemberService;
+	private final UserMapper userMapper;
 	private final AuthUserResolver authUserResolver;
 
 	@Transactional(readOnly = true)
@@ -81,6 +86,28 @@ public class TeamService {
 	}
 
 	@Transactional
+	public TeamMemberResponse addTeamMember(Integer teamId, TeamMemberAddRequest request) {
+		Integer currentUserId = authUserResolver.getCurrentUserId();
+		verifyTeamOwner(teamId, currentUserId);
+
+		Integer targetUserId = request.userId();
+		if (userMapper.findById(targetUserId).isEmpty()) {
+			throw new UserNotFoundException(targetUserId);
+		}
+
+		if (projectMapper.existsTeamMember(teamId, targetUserId)) {
+			throw new BadRequestException("이미 팀에 참여 중인 멤버입니다.");
+		}
+
+		projectMapper.insertTeamMember(teamId, targetUserId, DEFAULT_TEAM_ROLE);
+
+		return teamMapper.findMembersByTeamId(teamId).stream()
+				.filter(member -> member.userId().equals(targetUserId))
+				.findFirst()
+				.orElseThrow(() -> new UserNotFoundException(targetUserId));
+	}
+
+	@Transactional
 	public void deleteTeam(Integer teamId) {
 		Integer userId = authUserResolver.getCurrentUserId();
 		teamMapper.findTeamByIdAndUserId(teamId, userId)
@@ -102,6 +129,16 @@ public class TeamService {
 		int deleted = teamMapper.deleteTeam(teamId);
 		if (deleted == 0) {
 			throw new TeamNotFoundException(teamId);
+		}
+	}
+
+	private void verifyTeamOwner(Integer teamId, Integer userId) {
+		teamMapper.findTeamByIdAndUserId(teamId, userId)
+				.orElseThrow(() -> new TeamNotFoundException(teamId));
+
+		String teamRole = teamMapper.findTeamRoleByTeamIdAndUserId(teamId, userId);
+		if (teamRole == null || !CREATOR_TEAM_ROLE.equalsIgnoreCase(teamRole)) {
+			throw new ForbiddenAccessException("팀 멤버 추가는 팀장만 가능합니다.");
 		}
 	}
 }
